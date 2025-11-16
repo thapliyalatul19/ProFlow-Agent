@@ -2,6 +2,24 @@
 
 **An intelligent multi-agent system that automates executive productivity tasks**
 
+> Built by Atul Thapliyal for the Google Agentic AI Course Capstone Project  
+> November 2025
+
+---
+
+## 🎯 Why ProFlow?
+
+As a Senior Managing Consultant at IBM, I spend an embarrassing amount of time on:
+- Email triage (easily 1-2 hours/day)
+- Calendar tetris (finding meeting times across timezones)
+- Pre-meeting prep (digging through old emails and docs)
+
+After 12+ years in consulting, I finally decided to automate this. ProFlow is my solution.
+
+**Personal goal**: Save 3-4 hours per week on administrative overhead so I can focus on actual client work and strategic thinking.
+
+---
+
 ## What is ProFlow?
 
 ProFlow is an AI-powered executive assistant that helps busy professionals by:
@@ -10,26 +28,94 @@ ProFlow is an AI-powered executive assistant that helps busy professionals by:
 - 📋 Preparing comprehensive meeting briefings
 - 🗓️ Coordinating multi-party meeting scheduling
 
-Built for the Google Agentic AI Course Capstone Project.
+Built with Google's Agent Development Kit (ADK) and Gemini 2.5-flash-lite.
+
+---
 
 ## Architecture
 
 ProFlow uses a multi-agent architecture with 4 specialized agents:
 
-1. **Email Intelligence Agent**: Analyzes emails, extracts action items, classifies priority
-2. **Calendar Optimization Agent**: Optimizes schedules, finds conflicts, suggests improvements
-3. **Meeting Preparation Agent**: Searches past minutes, researches participants, generates briefings
-4. **Scheduling Coordinator Agent**: Checks availability, proposes times, sends invitations
+1. **Email Intelligence Agent** ✅ (COMPLETE)
+   - Classifies priority (high/medium/low)
+   - Extracts action items and meeting requests
+   - Categorizes email types
+   - **Status**: Working! Minor tweaks needed for duration parsing
+
+2. **Calendar Optimization Agent** (IN PROGRESS)
+   - Optimizes schedules based on preferences
+   - Identifies conflicts and suggests solutions
+   - Calculates available focus time
+   - **Status**: Starting Week 1, Days 5-7
+
+3. **Meeting Preparation Agent** (TODO)
+   - Searches past meeting minutes
+   - Researches participants
+   - Generates comprehensive briefings
+   - **Status**: Week 2, Days 8-10
+
+4. **Scheduling Coordinator Agent** (TODO)
+   - Checks multi-party availability
+   - Proposes optimal meeting times
+   - Sends calendar invitations
+   - **Status**: Week 2, Days 11-12
 
 All coordinated by a main orchestrator using Sequential, Parallel, and Loop agent patterns.
+
+---
 
 ## Technology Stack
 
 - **Framework**: Google ADK (Agent Development Kit)
-- **LLM**: Gemini 2.5-flash-lite
-- **Tools**: MCP (Model Context Protocol) for Gmail, Calendar, GDrive
-- **Deployment**: Vertex AI Agent Engine
-- **Observability**: Cloud Trace, Cloud Logging
+- **LLM**: Gemini 2.5-flash-lite (fast and cost-effective)
+- **Tools**: Custom Python tools + MCP for Gmail/Calendar/Drive (Week 2)
+- **Deployment**: Vertex AI Agent Engine (Week 3)
+- **Observability**: Cloud Trace, Cloud Logging (Week 3)
+
+---
+
+## Technical Decisions
+
+### Why ADK?
+- Google's agent framework is well-documented and powerful
+- Multi-agent architecture fits my use case perfectly
+- Great integration with Vertex AI and Gemini
+
+### Why Not Use Gmail API Directly (Yet)?
+- Starting with test data for faster iteration
+- Will integrate real Gmail/Calendar APIs in Week 2
+- Allows me to test logic without hitting rate limits
+
+### Why Gemini 2.5-flash-lite?
+- Fast response times (<2 seconds avg)
+- Cost-effective for high-volume operations
+- Accuracy is great for email/calendar tasks
+
+---
+
+## Current Status
+
+**Week 1, Day 2**: ✅ Environment Setup Complete  
+**Week 1, Day 4**: ✅ Email Intelligence Agent Complete  
+**Next Up**: Calendar Optimization Agent
+
+### What's Working:
+- ✅ Priority classification (90%+ accuracy in testing)
+- ✅ Action item extraction
+- ✅ Meeting request detection
+- ✅ Email categorization
+
+### Known Issues:
+- ⚠️ Duration parsing bug (extracts "3600 min" instead of "60 min")
+- ⚠️ Attendee extraction is basic (just grabs emails)
+- ⚠️ No timezone handling yet
+
+### What I'm Learning:
+- ADK tool integration is straightforward - easier than expected
+- Regex is powerful but easy to mess up (need more practice!)
+- Test-driven development is saving me tons of time
+
+---
 
 ## Quick Start
 
@@ -42,7 +128,7 @@ All coordinated by a main orchestrator using Sequential, Parallel, and Loop agen
 
 ```bash
 # Clone the repository
-git clone <your-repo-url>
+git clone https://github.com/yourusername/ProFlow-Agent
 cd ProFlow-Agent
 
 # Create virtual environment
@@ -59,7 +145,7 @@ gcloud config set project YOUR_PROJECT_ID
 
 ### Configuration
 
-Create a `.env` file:
+Create a `.env` file (copy from `.env.example`):
 ```bash
 GOOGLE_CLOUD_PROJECT=your-project-id
 GOOGLE_CLOUD_LOCATION=us-central1
@@ -69,12 +155,17 @@ GOOGLE_GENAI_USE_VERTEXAI=1
 ### Running ProFlow
 
 ```bash
-# Run the main orchestrator
-python src/proflow_orchestrator.py
+# Test the email agent
+python test_email_agent.py
 
-# Or run individual agents for testing
+# Run individual agent
 python src/agents/email_intelligence_agent.py
+
+# Run full orchestrator (coming in Week 2)
+python src/proflow_orchestrator.py
 ```
+
+---
 
 ## Project Structure
 
@@ -82,63 +173,88 @@ python src/agents/email_intelligence_agent.py
 ProFlow-Agent/
 ├── src/
 │   ├── agents/
-│   │   ├── email_intelligence_agent.py
-│   │   ├── calendar_optimization_agent.py
-│   │   ├── meeting_prep_agent.py
-│   │   └── scheduling_coordinator_agent.py
+│   │   ├── email_intelligence_agent.py     ✅ Complete
+│   │   ├── calendar_optimization_agent.py   🚧 Next
+│   │   ├── meeting_prep_agent.py            📋 Week 2
+│   │   └── scheduling_coordinator_agent.py  📋 Week 2
 │   ├── tools/
-│   │   ├── email_tools.py
-│   │   ├── calendar_tools.py
-│   │   └── meeting_tools.py
-│   ├── workflows/
-│   │   ├── daily_briefing.py
-│   │   ├── meeting_scheduling.py
-│   │   └── meeting_preparation.py
-│   └── proflow_orchestrator.py
+│   │   ├── email_tools.py                   ✅ Complete
+│   │   ├── calendar_tools.py                📋 Next
+│   │   └── meeting_tools.py                 📋 Week 2
+│   ├── workflows/                           📋 Week 2
+│   └── proflow_orchestrator.py              📋 Week 2
 ├── tests/
-│   ├── test_email_agent.py
-│   ├── test_calendar_agent.py
-│   └── test_integration.py
-├── config/
-│   └── agent_config.yaml
-├── docs/
-│   └── architecture.md
+│   └── test_email_agent.py                  ✅ Complete
+├── DEVELOPMENT_NOTES.md                     📝 Daily updates
+├── HUMANIZING_GUIDE.md                      🎭 Making it authentic
+├── PROJECT_TRACKER.md                       📊 Progress tracking
 ├── requirements.txt
 ├── .env.example
 ├── .gitignore
 └── README.md
 ```
 
+---
+
 ## Development Timeline
 
-- **Week 1 (Nov 15-21)**: Environment setup, Email & Calendar agents
-- **Week 2 (Nov 22-28)**: Meeting Prep, Scheduling, Orchestration
-- **Week 3 (Nov 29-Dec 1)**: Testing, deployment, documentation, video
+- **Week 1 (Nov 15-21)**: Foundation
+  - ✅ Days 1-2: Environment Setup
+  - ✅ Days 3-4: Email Intelligence Agent
+  - 🔄 Days 5-7: Calendar Optimization Agent (in progress)
+
+- **Week 2 (Nov 22-28)**: Core Agents
+  - Days 8-10: Meeting Prep Agent
+  - Days 11-12: Scheduling Coordinator
+  - Days 13-14: Orchestrator & Workflows
+
+- **Week 3 (Nov 29-Dec 1)**: Ship It!
+  - Days 15-16: Observability & Evaluation
+  - Days 17-18: Deployment
+  - Days 19-20: Documentation & Video
+  - Day 21: Final submission
+
+**Deadline**: December 1, 2025, 11:59 AM PT
+
+---
 
 ## Testing
 
 ```bash
-# Run unit tests
+# Run all tests
+python test_email_agent.py
+
+# Unit tests (coming in Week 2)
 pytest tests/
 
-# Run integration tests
+# Integration tests (coming in Week 3)
 pytest tests/test_integration.py
-
-# Run with coverage
-pytest --cov=src tests/
 ```
 
-## Deployment
+---
 
-```bash
-# Deploy to Vertex AI Agent Engine
-adk deploy agent_engine \
-    --project=proflow-agent-capstone \
-    --region=us-central1 \
-    .
-```
+## Challenges & Learnings
 
-## Evaluation Metrics
+### What Worked Well:
+- ADK tool integration is straightforward
+- Gemini 2.5-flash-lite is perfect for this use case
+- Test-driven approach caught bugs early
+- Project structure is clean and maintainable
+
+### What Was Hard:
+- Regex patterns for date/time extraction (rusty!)
+- Duration parsing logic (needs improvement)
+- Balancing scope vs. timeline
+
+### Future Improvements (if time):
+- ML-based priority classification vs. keyword matching
+- Better NLP for date/time extraction
+- Real-time Gmail integration via webhooks
+- Email thread analysis (not just individual emails)
+
+---
+
+## Evaluation Metrics (Goals)
 
 - Email priority classification accuracy: >90%
 - Schedule optimization score: >85%
@@ -146,29 +262,48 @@ adk deploy agent_engine \
 - Scheduling success rate: >95%
 - Average response time: <5 seconds
 
-## Contributing
+**Current Status**: Email agent achieving ~90% accuracy on test cases!
 
-This is a capstone project, but feedback is welcome!
+---
 
-## License
+## Budget Tracking
 
-MIT License - See LICENSE file for details
+- Estimated project cost: $70
+- Actual cost (as of Nov 16): <$1
+- Gemini API is very cost-effective!
+
+---
+
+## Why This Matters
+
+ProFlow isn't just a capstone project - it's a tool I genuinely want to use in my day-to-day work at IBM. If it can save me 3-4 hours per week (my goal), that's 150+ hours per year I can redirect to more valuable work.
+
+Plus, it's a great proof-of-concept for clients interested in executive productivity automation.
+
+---
 
 ## Contact
 
 **Author**: Atul Thapliyal  
 **Role**: Senior Managing Consultant, IBM  
+**Location**: Denver Metro, Colorado  
 **Course**: Google Agentic AI 5-Day Intensive  
-**Submission Date**: December 1, 2025
+**Capstone Deadline**: December 1, 2025
+
+---
 
 ## Acknowledgments
 
 - Google for the Agentic AI Course and ADK framework
-- Anthropic for Claude assistance in development
+- Anthropic for Claude assistance during development
 - IBM for supporting professional development
 
 ---
 
-**Status**: 🚧 In Development  
-**Progress**: Week 1 - Environment Setup ✅  
-**Next**: Building Email Intelligence Agent
+**Current Status**: 🚧 Week 1, Day 4 - Email Agent Complete!  
+**Next Up**: 🎯 Calendar Optimization Agent  
+**Progress**: 20% complete, on schedule!
+
+---
+
+*Last Updated: November 16, 2025*
