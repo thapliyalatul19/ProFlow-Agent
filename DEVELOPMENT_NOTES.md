@@ -173,5 +173,33 @@ Calendar agent should go faster now that I understand the patterns.
 
 ---
 
-**Last Updated**: November 16, 2025, 11:00 PM  
+### November 16, 2025 - Late Evening: Quick Refactor
+
+**Time**: 30 minutes
+
+**What I Did**:
+- Cleaned up email_tools.py - was getting too cluttered
+- Removed some type hints that were making code harder to read
+- Added TODOs for the duration parsing bug (still annoying me)
+- Left some FIXME notes for timezone handling later
+
+**Why**:
+Code was feeling overly structured after initial build. Went back and simplified a few things:
+- Some type annotations were redundant (Python already infers most of this)
+- Realized I don't need every function perfectly documented for MVP
+- Added reminders for known issues instead of pretending they don't exist
+
+**Specific Changes**:
+- email_tools.py: stripped out unnecessary type hints
+- Added TODO comment on line 87 about the 60min/3600min bug
+- FIXME on timezone handling - will need this for Calendar agent
+- Made a few comments less formal (was over-explaining obvious stuff)
+
+**Still Works**: Ran tests, everything still passes. Just cleaner now.
+
+**Commit**: "cleanup email tools - added TODOs and removed some type hints"
+
+---
+
+**Last Updated**: November 16, 2025, 11:30 PM  
 **Next Update**: After completing Calendar Optimization Agent
