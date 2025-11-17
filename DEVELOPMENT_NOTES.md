@@ -201,5 +201,93 @@ Code was feeling overly structured after initial build. Went back and simplified
 
 ---
 
-**Last Updated**: November 16, 2025, 11:30 PM  
-**Next Update**: After completing Calendar Optimization Agent
+### November 17, 2025 - Days 5-7: Calendar Optimization Agent
+
+**Time Spent**: ~3.5 hours
+- Tool development: 2 hours  
+- Agent creation: 1 hour
+- Testing: 30 minutes
+
+**What I Built**:
+- `calendar_tools.py` with three core functions:
+  - analyze_schedule() - comprehensive schedule analysis
+  - find_available_slots() - identifies open meeting times
+  - suggest_meeting_reschedule() - proposes alternative times
+- `calendar_optimization_agent.py` - Gemini-powered optimization
+- Full test suite with 6 different scenarios
+
+**How It Works**:
+The calendar agent analyzes a day's schedule and calculates an optimization score (0-100) based on:
+- Conflicts (overlapping meetings) - most severe penalty
+- Missing buffers between meetings
+- Available focus time for deep work
+- Consecutive meeting overload
+
+It generates prioritized suggestions: conflicts (high), buffers (medium), focus time (high).
+
+**What Went Well**:
+- Faster than email agent - patterns are familiar now
+- Optimization scoring algorithm works nicely
+- Test suite caught a scoring bug early (conflicts weren't penalized enough)
+- Code feels cleaner than first agent
+
+**Challenges**:
+1. **DateTime handling** - Kept it simple with string comparisons for MVP
+   - Using '09:00' format strings instead of proper datetime objects
+   - TODO: Will need proper datetime for real Calendar API integration
+   
+2. **Scoring algorithm tuning** - Had to adjust conflict penalty
+   - Initial: -20 points per conflict
+   - Updated: -30 points to make conflicts more impactful
+   - Test caught this - good validation!
+
+3. **Buffer calculation** - Logic is placeholder for now
+   - Currently doesn't actually calculate gaps between meetings
+   - FIXME: Need proper time arithmetic
+
+**Design Choices**:
+- Kept datetime simple (strings) for rapid prototyping
+- Separate tools for different optimization aspects
+- Optimization score gives single metric for schedule quality
+- Prioritized suggestions help executives focus on what matters
+
+**Test Results**:
+- ✅ Overbooked schedule: Score 45/100, detected issues correctly
+- ✅ Optimized schedule: Score 75/100, minimal suggestions
+- ✅ Conflicting meetings: Detected overlap, scored 70/100
+- ✅ Available slots: Found morning openings
+- ✅ Reschedule suggestions: Generated alternatives with confidence scores
+
+**Known Issues**:
+- DateTime handling is simplified (string comparisons)
+- Buffer gap calculation is placeholder logic
+- No timezone support yet (will matter for Calendar API)
+- Consecutive meeting detection needs better gap logic
+
+**What I Learned**:
+- Second agent is WAY faster - patterns established
+- Test-driven development really pays off
+- Keeping things simple first, then improving = good strategy
+- Optimization scoring is trickier than classification (email vs calendar)
+
+**Productivity Note**:
+Built this in one evening session. Having email agent as template made this much smoother.
+Didn't overthink the datetime stuff - can improve when integrating real Calendar API.
+
+**Time Tracking**:
+- Days 1-2: 3 hours (setup)
+- Days 3-4: 4 hours (email agent)  
+- Days 5-7: 3.5 hours (calendar agent)
+- Total so far: 10.5 hours
+- Remaining: ~17-24 hours
+
+**Budget**:
+- Still under $1 in API costs
+- On track
+
+**Commit**: "add calendar optimization agent - schedule analysis and conflict detection"
+
+---
+
+**Last Updated**: November 17, 2025, 8:00 AM  
+**Next Update**: After completing Meeting Preparation Agent
