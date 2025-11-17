@@ -1,145 +1,156 @@
 """
-Email Tools for ProFlow
-Tools for email classification, extraction, and analysis
+Email Tools for ProFlow - Enhanced Version
+Author: Atul Thapliyal
+Created: Nov 16, 2025
+Last updated: Nov 16, 2025 evening
+
+Tools for email classification, extraction, and analysis with improved robustness.
+
+Notes:
+- Urgency scoring works well but weights might need tuning based on real usage
+- Duration parsing finally fixed after debugging the regex
+- TODO: Consider making urgency weights configurable via user preferences
 """
 
 from typing import Dict, List, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 import re
 
 
-def classify_email_priority(
-    subject: str,
-    sender: str,
-    body: str,
-    user_rules: Optional[Dict] = None
-) -> Dict:
+def classify_email_priority(subject, sender, body, user_rules=None):
     """
-    Classify email priority based on content and user-defined rules.
+    Classify email priority with context-aware logic.
     
-    This tool analyzes an email and determines its priority level based on:
-    - Sender importance
-    - Subject urgency indicators
-    - Content analysis
-    - User-defined rules (VIP senders, keywords, etc.)
-    
-    Args:
-        subject: Email subject line
-        sender: Email sender address
-        body: Email body content (first 500 chars for analysis)
-        user_rules: Optional dict with VIP senders, urgent keywords, etc.
-        
-    Returns:
-        Dict with:
-            - priority: "high" | "medium" | "low"
-            - requires_response: bool
-            - suggested_response_time: "immediate" | "today" | "this_week"
-            - action_items: List[str]
-            - category: Email category
-            - reasoning: Why this priority was assigned
+    Uses 0-10 urgency scoring with different weights for various factors.
+    Returns priority (high/medium/low) plus detailed reasoning.
     """
     
-    # Default priority
     priority = "medium"
     requires_response = False
     response_time = "this_week"
     reasoning = []
-    
-    # Check for urgent keywords in subject
-    urgent_keywords = [
-        "urgent", "asap", "immediate", "critical", "emergency",
-        "important", "action required", "deadline", "time-sensitive"
-    ]
+    urgency_score = 0  # 0-10 scale
     
     subject_lower = subject.lower()
-    body_lower = body[:500].lower()  # First 500 chars
+    body_lower = body.lower()
     
-    # High priority indicators
-    if any(keyword in subject_lower for keyword in urgent_keywords):
-        priority = "high"
-        requires_response = True
-        response_time = "immediate"
+    # TODO: might want to make these weights configurable later
+    # 1. Urgent keywords (weight: +3)
+    urgent_keywords = [
+        "urgent", "asap", "immediate", "critical", "emergency",
+        "important", "action required", "deadline", "time-sensitive",
+        "escalation", "blocker", "blocking"
+    ]
+    if any(kw in subject_lower for kw in urgent_keywords):
+        urgency_score += 3
         reasoning.append("Urgent keywords in subject")
     
-    # Check user rules for VIP senders
+    # 2. VIP/Executive senders (weight: +2)
+    # Note: this catches most C-suite emails pretty reliably
+    vip_domains = ["cto", "ceo", "vp", "director", "partner"]
+    executive_titles = ["cto@", "ceo@", "chief", "president", "vp"]
+    
     if user_rules and "vip_senders" in user_rules:
         if any(vip in sender.lower() for vip in user_rules["vip_senders"]):
-            if priority != "high":
-                priority = "medium"
-            requires_response = True
-            response_time = "today"
+            urgency_score += 2
             reasoning.append("VIP sender")
+    elif any(title in sender.lower() for title in executive_titles):
+        urgency_score += 2
+        reasoning.append("Executive sender")
     
-    # Check for questions (requires response)
+    # 3. Deadline proximity (weight: +3 if today, +2 if tomorrow)
+    deadline = _extract_deadline_with_date(body)
+    if deadline:
+        if deadline == "today" or deadline == "eod":
+            urgency_score += 3
+            reasoning.append(f"Deadline: {deadline}")
+        elif deadline == "tomorrow":
+            urgency_score += 2
+            reasoning.append(f"Deadline: {deadline}")
+        else:
+            urgency_score += 1
+            reasoning.append(f"Deadline: {deadline}")
+    
+    # 4. Multiple question marks (indicates urgency)
+    if body.count("?") >= 3:
+        urgency_score += 1
+        reasoning.append("Multiple questions")
+    
+    # 5. ALL CAPS detection (shouting = urgent)
+    caps_words = [w for w in subject.split() if w.isupper() and len(w) > 2]
+    if len(caps_words) >= 2:
+        urgency_score += 2
+        reasoning.append("Emphatic subject")
+    
+    # 6. Meeting time proximity
+    if "today" in body_lower or "this afternoon" in body_lower:
+        urgency_score += 2
+        reasoning.append("Time-sensitive meeting")
+    
+    # 7. Explicit response request
+    response_requests = [
+        "please respond", "need response", "reply asap", 
+        "waiting for your", "need your input"
+    ]
+    if any(req in body_lower for req in response_requests):
+        requires_response = True
+        urgency_score += 1
+    
+    # 8. FYI indicators (reduce urgency)
+    fyi_keywords = ["fyi", "for your information", "no response needed", "heads up"]
+    if any(fyi in body_lower for fyi in fyi_keywords):
+        urgency_score = max(0, urgency_score - 2)
+        requires_response = False
+        reasoning.append("FYI only")
+    
+    # 9. Questions = response needed
     if "?" in body:
         requires_response = True
-        if priority == "low":
-            priority = "medium"
-        reasoning.append("Contains questions")
     
-    # Check for meeting requests
-    meeting_keywords = ["meeting", "call", "schedule", "calendar", "available"]
-    if any(keyword in body_lower for keyword in meeting_keywords):
+    # Convert urgency score to priority
+    if urgency_score >= 5:
+        priority = "high"
+        response_time = "immediate"
         requires_response = True
-        if priority == "low":
-            priority = "medium"
+    elif urgency_score >= 3:
+        priority = "medium"
         response_time = "today"
-        reasoning.append("Contains meeting request")
+    else:
+        priority = "low"
+        response_time = "this_week"
     
-    # FYI indicators (lower priority)
-    fyi_keywords = ["fyi", "for your information", "cc:", "bcc:"]
-    if any(keyword in body_lower for keyword in fyi_keywords):
-        if priority == "medium":
-            priority = "low"
-        requires_response = False
-        reasoning.append("FYI email")
-    
-    # Extract simple action items (lines starting with action verbs)
-    action_verbs = ["review", "approve", "complete", "submit", "send", "update"]
-    action_items = []
-    for line in body.split('\n')[:20]:  # First 20 lines
-        if any(line.lower().strip().startswith(verb) for verb in action_verbs):
-            action_items.append(line.strip())
+    # Extract action items inline
+    action_items = _quick_extract_actions(body)
     
     return {
         "priority": priority,
+        "urgency_score": urgency_score,
         "requires_response": requires_response,
         "suggested_response_time": response_time,
         "action_items": action_items,
         "category": _categorize_email(subject, body),
-        "reasoning": "; ".join(reasoning) if reasoning else "Standard email"
+        "reasoning": "; ".join(reasoning) if reasoning else "Standard email",
+        "deadline": deadline if deadline else None
     }
 
 
-def extract_meeting_requests(email_content: str) -> Dict:
+def extract_meeting_requests(email_content):
     """
-    Parse email content to identify meeting requests.
+    Extract meeting request details from email content.
     
-    Looks for:
-    - Proposed meeting times
-    - Duration indicators
-    - Meeting topics
-    - Attendees
-    
-    Args:
-        email_content: Full email body text
-        
-    Returns:
-        Dict with:
-            - is_meeting_request: bool
-            - proposed_times: List of potential meeting times
-            - duration: Estimated duration in minutes
-            - topic: Meeting subject
-            - attendees: List of mentioned attendees
+    Returns meeting times, duration, topic, attendees if detected.
+    Duration parsing finally working correctly (was getting 3600 instead of 60!)
     """
     
     content_lower = email_content.lower()
     
-    # Check if this is a meeting request
+    # FIXME: this list is getting long, maybe move to config file
     meeting_indicators = [
-        "schedule a meeting", "let's meet", "meeting request",
-        "would you be available", "can we meet", "set up a call",
-        "book some time", "find time to meet"
+        "schedule a meeting", "schedule a", "let's meet", "meeting request", "set up a meeting",
+        "would you be available", "can we meet", "set up a call", "quick call", "call this week",
+        "book some time", "find time", "sync on", "sync up", "catch up", " call ",
+        "hop on a call", "jump on a call", "calendar invite", "minute call",
+        "available:", "i'm available", "im available", "free on"
     ]
     
     is_meeting_request = any(indicator in content_lower for indicator in meeting_indicators)
@@ -153,91 +164,102 @@ def extract_meeting_requests(email_content: str) -> Dict:
             "attendees": []
         }
     
-    # Extract proposed times (simplified - looks for day/time patterns)
+    # Extract proposed times
     proposed_times = []
-    time_patterns = [
-        r'(monday|tuesday|wednesday|thursday|friday|saturday|sunday)',
-        r'(\d{1,2}:\d{2}\s*(?:am|pm))',
-        r'(next week|this week|tomorrow)',
-    ]
     
-    for pattern in time_patterns:
+    # Day patterns
+    day_pattern = r'(monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today)'
+    days = re.findall(day_pattern, content_lower)
+    
+    # Time patterns  
+    # Note: this regex catches most common time formats, good enough for now
+    time_pattern = r'(\d{1,2}:\d{2}\s*(?:am|pm)|(\d{1,2})\s*(?:am|pm))'
+    times = re.findall(time_pattern, content_lower)
+    times = [t[0] if t[0] else t[1] + ('am' if 'am' in content_lower else 'pm') for t in times]
+    
+    # Combine days and times
+    if days and times:
+        for day in set(days):
+            for time in times[:2]:  # limit to 2 times per day
+                proposed_times.append(f"{day} at {time}")
+    elif days:
+        proposed_times = list(set(days))
+    elif times:
+        proposed_times = times
+    
+    # Date patterns (e.g., "Nov 20", "11/20", "20th")
+    date_patterns = [
+        r'(nov|dec|jan|feb|mar|apr|may|jun|jul|aug|sep|oct)\s+(\d{1,2})',
+        r'(\d{1,2})/(\d{1,2})',
+        r'(\d{1,2})(st|nd|rd|th)'
+    ]
+    for pattern in date_patterns:
         matches = re.findall(pattern, content_lower)
-        proposed_times.extend(matches)
+        if matches:
+            proposed_times.extend([str(m) for m in matches[:2]])
     
-    # Extract duration
+    # Extract duration - finally fixed the bug!
     duration = None
-    duration_patterns = [
-        r'(\d+)\s*(?:min|minute)',
-        r'(\d+)\s*(?:hr|hour)',
-        r'(30|60)\s*min',
-    ]
     
-    for pattern in duration_patterns:
-        match = re.search(pattern, content_lower)
-        if match:
-            duration = int(match.group(1))
-            if 'hr' in content_lower or 'hour' in content_lower:
-                duration *= 60
-            break
+    # Try "X minutes" or "X min"
+    min_match = re.search(r'(\d+)\s*(?:minute|min)(?:ute)?s?(?!\s*hour)', content_lower)
+    if min_match:
+        duration = int(min_match.group(1))
     
-    # Default to 30 minutes if not specified
+    # Try "X hours" or "X hr"  
+    hr_match = re.search(r'(\d+(?:\.\d+)?)\s*(?:hour|hr)s?', content_lower)
+    if hr_match and not duration:
+        duration = int(float(hr_match.group(1)) * 60)
+    
+    # Try "30-60 min" range format
+    range_match = re.search(r'(\d+)-(\d+)\s*min', content_lower)
+    if range_match and not duration:
+        duration = int(range_match.group(1))  # use lower end
+    
+    # Default to 30 minutes if not found
     if duration is None:
         duration = 30
     
-    # Extract topic (first line with "re:" or "regarding" or subject-like)
-    topic = "Meeting"  # Default
+    # Extract topic
+    topic = "Meeting"  # default
+    
     topic_patterns = [
-        r're:\s*(.+)',
-        r'regarding\s*(.+)',
-        r'about\s*(.+)',
-        r'discuss\s*(.+)'
+        r'(?:meeting|call|sync)\s+(?:on|about|regarding|re:?)\s+(.{5,40})',
+        r'(?:discuss|talk about)\s+(.{5,40})',
+        r'(?:re:|regarding:)\s+(.{5,40})',
     ]
     
     for pattern in topic_patterns:
         match = re.search(pattern, content_lower)
         if match:
-            topic = match.group(1).strip()[:50]  # First 50 chars
+            topic = match.group(1).strip().split('\n')[0][:40]
             break
+    
+    attendees = _extract_attendees_enhanced(email_content)
     
     return {
         "is_meeting_request": True,
-        "proposed_times": list(set(proposed_times))[:3],  # Top 3 unique times
+        "proposed_times": proposed_times[:5],
         "duration": duration,
         "topic": topic,
-        "attendees": _extract_attendees(email_content)
+        "attendees": attendees,
+        "meeting_type": _detect_meeting_type(email_content)
     }
 
 
-def extract_action_items(email_content: str) -> Dict:
-    """
-    Extract action items from email content.
-    
-    Looks for:
-    - Tasks with deadlines
-    - Action verbs (review, approve, complete, etc.)
-    - Numbered or bulleted lists
-    - "To-do" sections
-    
-    Args:
-        email_content: Full email body text
-        
-    Returns:
-        Dict with:
-            - action_items: List of identified action items
-            - deadlines: Dict mapping action items to deadlines
-            - total_count: Number of action items found
-    """
+def extract_action_items(email_content):
+    """Extract action items with deadlines and priorities."""
     
     action_items = []
     deadlines = {}
+    priorities = {}
     
-    # Action verb patterns
     action_verbs = [
-        "please review", "please approve", "please complete",
-        "please submit", "please send", "please update",
-        "need you to", "can you", "could you",
-        "action required", "to do", "todo"
+        "please review", "please approve", "please complete", "please submit",
+        "please send", "please update", "please confirm", "please provide",
+        "need you to", "can you", "could you", "would you",
+        "action required", "to do", "todo", "task:", "action:",
+        "must", "should", "need to"
     ]
     
     lines = email_content.split('\n')
@@ -245,8 +267,7 @@ def extract_action_items(email_content: str) -> Dict:
     for i, line in enumerate(lines):
         line_lower = line.lower().strip()
         
-        # Skip empty lines
-        if not line_lower:
+        if not line_lower or len(line_lower) < 5:
             continue
         
         # Check for action verbs
@@ -254,118 +275,191 @@ def extract_action_items(email_content: str) -> Dict:
             if verb in line_lower:
                 action_items.append(line.strip())
                 
-                # Look for deadline in this line or next line
-                deadline = _extract_deadline(line)
+                # Extract deadline
+                deadline = _extract_deadline_with_date(line)
+                if not deadline and i + 1 < len(lines):
+                    deadline = _extract_deadline_with_date(lines[i + 1])
+                
                 if deadline:
                     deadlines[line.strip()] = deadline
-                elif i + 1 < len(lines):
-                    deadline = _extract_deadline(lines[i + 1])
-                    if deadline:
-                        deadlines[line.strip()] = deadline
+                
+                # Auto-assign priority based on deadline proximity
+                if deadline in ["today", "eod", "asap"]:
+                    priorities[line.strip()] = "high"
+                elif deadline == "tomorrow":
+                    priorities[line.strip()] = "medium"
+                
                 break
         
         # Check for numbered/bulleted lists
         if re.match(r'^\s*[\d\-\*\•]+[\.\)]\s+', line):
             action_items.append(line.strip())
     
+    # Remove duplicates
+    seen = set()
+    unique_items = []
+    for item in action_items:
+        if item not in seen:
+            seen.add(item)
+            unique_items.append(item)
+    
     return {
-        "action_items": action_items[:10],  # Top 10 items
+        "action_items": unique_items[:10],
         "deadlines": deadlines,
-        "total_count": len(action_items)
+        "priorities": priorities,
+        "total_count": len(unique_items)
     }
 
 
-def _categorize_email(subject: str, body: str) -> str:
-    """
-    Categorize email by type.
-    
-    Returns one of:
-    - "meeting_request"
-    - "decision_needed"
-    - "fyi"
-    - "question"
-    - "update"
-    - "general"
-    """
+def _categorize_email(subject, body):
+    """Categorize email by type - works pretty well."""
     
     subject_lower = subject.lower()
     body_lower = body[:500].lower()
     
-    # Meeting request
-    if any(word in body_lower for word in ["schedule", "meeting", "calendar", "available"]):
+    # Order matters - check most specific first
+    if "escalation" in subject_lower or "urgent" in subject_lower:
+        return "escalation"
+    
+    if any(w in body_lower for w in ["schedule", "meeting", "call", "available", "calendar"]):
         return "meeting_request"
     
-    # Decision needed
-    if any(word in body_lower for word in ["approve", "decision", "choose", "select"]):
+    if any(w in body_lower for w in ["approve", "decision", "choose", "select", "sign off"]):
         return "decision_needed"
     
-    # FYI
-    if any(word in body_lower for word in ["fyi", "for your information", "update you"]):
-        return "fyi"
-    
-    # Question
-    if "?" in body:
+    if "?" in body and len([c for c in body if c == "?"]) >= 2:
         return "question"
     
-    # Update
-    if any(word in subject_lower for word in ["update", "status", "progress"]):
+    if any(w in body_lower for w in ["fyi", "for your information", "heads up"]):
+        return "fyi"
+    
+    if any(w in subject_lower for w in ["update", "status", "progress", "report"]):
         return "update"
     
     return "general"
 
 
-def _extract_attendees(email_content: str) -> List[str]:
-    """Extract potential attendees from email content."""
+def _extract_attendees_enhanced(email_content):
+    """Extract attendees - gets emails and names."""
     attendees = []
     
-    # Look for email addresses
+    # Email addresses
     email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
     emails = re.findall(email_pattern, email_content)
-    attendees.extend(emails[:5])  # Max 5
     
-    return attendees
+    # Names (capitalized words)
+    name_pattern = r'\b([A-Z][a-z]+ [A-Z][a-z]+)\b'
+    names = re.findall(name_pattern, email_content)
+    
+    attendees.extend(emails[:5])
+    attendees.extend(names[:3])
+    
+    return list(set(attendees))
 
 
-def _extract_deadline(text: str) -> Optional[str]:
-    """Extract deadline from text."""
+def _extract_deadline_with_date(text):
+    """Extract deadline - handles most common formats."""
     
+    text_lower = text.lower()
+    
+    # Immediate deadlines
+    if any(w in text_lower for w in ["eod", "end of day", "today", "asap", "immediately"]):
+        return "today"
+    
+    if "tomorrow" in text_lower:
+        return "tomorrow"
+    
+    # Day-based deadlines
     deadline_patterns = [
-        r'by\s+(monday|tuesday|wednesday|thursday|friday)',
-        r'due\s+(monday|tuesday|wednesday|thursday|friday)',
-        r'by\s+(\d{1,2}/\d{1,2})',
-        r'deadline:\s*(.+)',
-        r'by\s+(tomorrow|today|next week)'
+        r'by\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)',
+        r'due\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)',
+        r'deadline:\s*(monday|tuesday|wednesday|thursday|friday|saturday|sunday)',
     ]
     
     for pattern in deadline_patterns:
-        match = re.search(pattern, text.lower())
+        match = re.search(pattern, text_lower)
         if match:
             return match.group(1)
+    
+    # Date patterns
+    date_patterns = [
+        r'by\s+(\d{1,2}/\d{1,2})',
+        r'due\s+(\d{1,2}/\d{1,2})',
+        r'by\s+(nov|dec|jan|feb|mar|apr|may|jun|jul|aug|sep|oct)\s+(\d{1,2})',
+    ]
+    
+    for pattern in date_patterns:
+        match = re.search(pattern, text_lower)
+        if match:
+            return match.group(0)
+    
+    if "next week" in text_lower:
+        return "next week"
+    
+    if "this week" in text_lower:
+        return "this week"
     
     return None
 
 
-# Test function for development
+def _detect_meeting_type(email_content):
+    """Detect meeting type - helps with scheduling priorities."""
+    content_lower = email_content.lower()
+    
+    if any(w in content_lower for w in ["1:1", "one on one", "1-on-1"]):
+        return "1:1"
+    
+    if any(w in content_lower for w in ["team", "all hands", "group"]):
+        return "team"
+    
+    if any(w in content_lower for w in ["client", "customer", "external"]):
+        return "external"
+    
+    if any(w in content_lower for w in ["quick", "15 min", "brief", "sync"]):
+        return "quick_sync"
+    
+    return "standard"
+
+
+def _quick_extract_actions(body):
+    """Quick action extraction for priority scoring - not comprehensive."""
+    actions = []
+    action_keywords = ["review", "approve", "send", "complete", "update"]
+    
+    for line in body.split('\n')[:15]:
+        if any(kw in line.lower() for kw in action_keywords):
+            actions.append(line.strip()[:60])
+            if len(actions) >= 3:
+                break
+    
+    return actions
+
+
+# Quick test
 if __name__ == "__main__":
-    # Test email classification
-    test_subject = "URGENT: Client escalation needs immediate attention"
+    test_subject = "URGENT: Client escalation - need response by EOD"
     test_sender = "cto@verizon.com"
     test_body = """
     Hi Atul,
     
-    We have a critical issue with the GenAI deployment that needs immediate attention.
-    The client is requesting a call today to discuss the architecture decisions.
+    Critical issue with GenAI deployment needs immediate attention.
+    Client CTO wants emergency call today at 3 PM.
     
-    Can you review the attached document and provide your recommendations by EOD?
+    Can you please:
+    1. Review error logs (attached)
+    2. Prepare root cause analysis  
+    3. Join call with recommendations
+    
+    This is blocking go-live Monday.
     
     Thanks,
     Sarah
     """
     
     result = classify_email_priority(test_subject, test_sender, test_body)
-    print("Email Classification Test:")
-    print(f"Priority: {result['priority']}")
-    print(f"Requires Response: {result['requires_response']}")
-    print(f"Response Time: {result['suggested_response_time']}")
-    print(f"Category: {result['category']}")
+    print("Enhanced Email Classification:")
+    print(f"Priority: {result['priority']} (urgency: {result['urgency_score']}/10)")
+    print(f"Response: {result['suggested_response_time']}")
+    print(f"Deadline: {result['deadline']}")
+    print(f"Actions: {len(result['action_items'])} items")
     print(f"Reasoning: {result['reasoning']}")
