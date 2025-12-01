@@ -1,11 +1,6 @@
 """
-Email Intelligence Agent for ProFlow - Enhanced
-Author: Atul Thapliyal
-Created: Nov 16, 2025
-Last update: Nov 16 evening - added robust urgency scoring
-
-Analyzes emails with context-aware priority, deadline detection, and sentiment analysis.
-Works pretty well after fixing the duration bug and adding urgency weights.
+Email agent - handles the daily email firehose
+Works pretty well after fixing the duration bug
 """
 
 import os
@@ -31,72 +26,36 @@ from tools.email_tools import (
 
 
 def create_email_intelligence_agent():
-    """
-    Create Email Intelligence Agent with enhanced capabilities.
-    
-    New features since initial version:
-    - Urgency scoring (0-10)
-    - Deadline proximity detection
-    - Executive sender identification  
-    - Meeting type classification
-    - Fixed duration parsing (no more 3600 min bug!)
-    """
+    """Setup email agent. Returns (client, config)"""
     
     agent = LlmAgent(
         model=Gemini(model="gemini-2.5-flash-lite"),
         name="email_intelligence_agent",
-        description="Enhanced email analysis with context-aware priority and deadline detection",
+        description="Email analysis with priority detection",
         instruction="""
-        You analyze emails for busy executives. Be direct and actionable.
+        Analyze emails for busy people. Be direct.
         
-        ANALYSIS PROCESS:
+        Use all three tools to analyze each email:
+        1. classify_email_priority - get urgency score (0-10)
+        2. extract_meeting_requests - find meeting details
+        3. extract_action_items - pull out tasks
         
-        1. PRIORITY (use classify_email_priority tool)
-           - Returns urgency score 0-10
-           - High (5+): Immediate action needed
-           - Medium (3-4): Handle today
-           - Low (<3): This week
-           - Check for: urgency keywords, deadlines, VIP senders, ALL CAPS
+        Quick rules:
+        - High priority: urgency 5+, needs action today
+        - Medium: urgency 3-4, handle this week  
+        - Low: everything else
+        - If from C-suite or has URGENT/ASAP, bump priority
         
-        2. MEETING DETECTION (use extract_meeting_requests tool)
-           - Detects: date/time, duration, topic, attendees
-           - Note meeting type: 1:1, team, client, quick sync
-           - Duration parsing is fixed now
+        Output format:
+        Priority: [HIGH/MEDIUM/LOW] (Score: X/10)
+        Why: [1 line reason]
+        Category: [escalation/meeting/decision/question/fyi]
+        Actions: [list if any]
+        Meeting: [details if found]
+        Recommend: [what to do]
+        Summary: [2 sentences max]
         
-        3. ACTION ITEMS (use extract_action_items tool)
-           - Extracts tasks with deadlines
-           - Prioritizes by deadline proximity
-           - Flags: today (high), tomorrow (medium), later (low)
-        
-        RESPONSE FORMAT:
-        Keep it concise - executives don't read paragraphs.
-        
-        Priority: [HIGH/MEDIUM/LOW] (Urgency: X/10)
-        Reasoning: [key factors]
-        
-        Category: [escalation/meeting_request/decision/question/fyi/update]
-        
-        Action Items: [if any, with deadlines]
-        - Item 1 (due: today)
-        - Item 2 (due: Friday)
-        
-        Meeting: [if detected]
-        - When: [proposed times]
-        - Duration: [X min]
-        - Type: [1:1/team/client/quick]
-        - Attendees: [list]
-        
-        Recommend: [Respond by X / Delegate / Archive / Schedule]
-        
-        Summary: [2 sentences - what it's about, what's needed]
-        
-        RULES:
-        - Use ALL tools for complete analysis
-        - Be specific about deadlines
-        - Flag VIP/executive senders
-        - Call out urgency factors (CAPS, multiple ?, today/EOD)
-        - If it's urgent, say so directly
-        - If it's FYI, be clear about that too
+        Keep it short. No walls of text.
         """,
         tools=[
             classify_email_priority,
@@ -109,16 +68,10 @@ def create_email_intelligence_agent():
 
 
 if __name__ == "__main__":
-    print("=" * 60)
-    print("Email Intelligence Agent - Enhanced Version")
-    print("=" * 60)
+    # quick test
+    print("Email Agent - testing setup")
+    print("-" * 40)
     
     agent = create_email_intelligence_agent()
-    print("\nAgent ready with enhanced features:")
-    print("- Urgency scoring (0-10 scale)")
-    print("- Deadline proximity detection")
-    print("- Executive sender identification")
-    print("- Fixed duration parsing")
-    print("- Meeting type classification")
-    print(f"\nTools loaded: {len(agent.tools)}")
-    print("Model: gemini-2.5-flash-lite")
+    print(f"Ready. Tools: {len(agent.tools)}")
+    print("Using: gemini-2.5-flash-lite")

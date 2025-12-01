@@ -1,18 +1,6 @@
 """
-Task Management Agent for ProFlow
-Author: Atul Thapliyal
-Created: Nov 17, 2024
-
-Manages tasks with priority matrix (Eisenhower), deadline tracking, dependency 
-management, and integration with email/calendar agents.
-
-Features:
-- Eisenhower Matrix (Urgent/Important quadrants)
-- Deadline proximity scoring
-- Task dependencies and blocking
-- Integration with email action items
-- Calendar-aware scheduling
-- Executive focus optimization
+Task agent - Eisenhower matrix and scheduling
+Q2 (important not urgent) is where the magic happens
 """
 
 import os
@@ -42,159 +30,55 @@ from tools.task_management_tools import (
 
 
 def create_task_management_agent():
-    """
-    Create Task Management Agent with Eisenhower Matrix and smart scheduling.
-    
-    Core Capabilities:
-    - Eisenhower Matrix categorization (4 quadrants)
-    - Deadline urgency scoring (0-10 scale)
-    - Dependency tracking and blocking detection
-    - Calendar-aware task scheduling
-    - Batch processing for email-extracted tasks
-    
-    Integration Points:
-    - Receives action items from Email Agent
-    - Requests calendar slots from Calendar Agent
-    - Provides task status to Orchestrator
-    """
+    """Setup task agent with Eisenhower matrix"""
     
     agent = LlmAgent(
         model=Gemini(model="gemini-2.5-flash-lite"),
         name="task_management_agent",
-        description="Executive task prioritization using Eisenhower Matrix and deadline tracking",
+        description="Task prioritization using Eisenhower Matrix",
         instruction="""
-        You manage tasks for busy executives using the Eisenhower Matrix framework.
-        Be strategic, data-driven, and respect executive time.
+        Manage tasks for busy executives. Use Eisenhower Matrix to prioritize.
         
-        TASK ANALYSIS PROCESS:
+        Process:
+        1. Categorize (use categorize_task_eisenhower)
+           - Q1: Urgent + Important -> Do now
+           - Q2: Important not urgent -> Schedule (this is gold)
+           - Q3: Urgent not important -> Delegate
+           - Q4: Neither -> Drop it
         
-        1. EISENHOWER CATEGORIZATION (use categorize_task_eisenhower tool)
-           Assess both urgency and importance to place tasks in quadrants:
-           
-           Q1 (DO FIRST): Urgent + Important
-           - Crises, deadlines, emergencies
-           - Action: Schedule immediately
-           
-           Q2 (SCHEDULE): Not Urgent + Important  
-           - Strategic work, planning, development
-           - Action: Block calendar time
-           - NOTE: This is where executives create value!
-           
-           Q3 (DELEGATE): Urgent + Not Important
-           - Interruptions, some emails/calls
-           - Action: Delegate or minimize
-           
-           Q4 (ELIMINATE): Not Urgent + Not Important
-           - Busywork, time wasters
-           - Action: Defer or eliminate
-        
-        2. DEADLINE URGENCY (use calculate_deadline_urgency tool)
-           Score 0-10 based on deadline proximity:
+        2. Score urgency (use calculate_deadline_urgency)
            - 10: Today/overdue
            - 8-9: Tomorrow
            - 6-7: This week
            - 3-5: Next week
-           - 0-2: 2+ weeks away
-           
-           Factor in: deadline type (hard vs soft), consequences, dependencies
+           - 0-2: Later
         
-        3. DEPENDENCIES (use check_task_dependencies tool)
-           - Identify blockers and prerequisites
-           - Map task chains (A → B → C)
-           - Flag critical path items
-           - Warn about bottlenecks
+        3. Check dependencies (use check_task_dependencies)
+           - What's blocked?
+           - What blocks others?
         
-        4. SCHEDULING (use suggest_task_schedule tool)
-           - Match task requirements to calendar availability
-           - Deep work → morning focus blocks
-           - Quick tasks → meeting buffers
-           - Meetings → afternoon slots
-           - Consider energy levels and context switching
+        4. Schedule smart (use suggest_task_schedule)
+           - Q1: Next available slot
+           - Q2: Protected time blocks
+           - Q3: Batch with similar tasks
+           - Q4: Never
         
-        5. BATCH PROCESSING (use batch_process_tasks tool)
-           - Process multiple tasks from emails efficiently
-           - Group similar tasks together
-           - Identify quick wins vs. major projects
+        5. Batch process (use batch_process_tasks for multiple)
         
-        TASK PRIORITIZATION LOGIC:
+        Output format:
+        Task: [name]
+        Quadrant: [Q1/Q2/Q3/Q4]
+        Priority: [score/10]
+        Deadline: [date or none]
+        Dependencies: [list or none]
+        Schedule: [when to do it]
+        Reasoning: [1 line why]
         
-        Priority Score = (Importance × 2) + Urgency + (Deadline Score) + (Dependency Multiplier)
-        
-        Decision Framework:
-        - Q1 tasks: Do immediately or within 4 hours
-        - Q2 tasks: Schedule specific blocks (don't let Q1 crowd these out!)
-        - Q3 tasks: Delegate with clear handoff
-        - Q4 tasks: Be honest - eliminate or defer indefinitely
-        
-        RESPONSE FORMAT:
-        
-        Task: [title]
-        Quadrant: [Q1/Q2/Q3/Q4] - [DO FIRST/SCHEDULE/DELEGATE/ELIMINATE]
-        Priority Score: [0-100]
-        Urgency: [X/10]
-        Importance: [X/10]
-        Deadline: [date/time] (in X days)
-        
-        Dependencies:
-        - Blocked by: [task(s)]
-        - Blocks: [task(s)]
-        - On critical path: [Yes/No]
-        
-        Recommendation:
-        [Specific action - when to do it, how long it needs, any delegation]
-        
-        Scheduling Suggestion:
-        - Best time: [morning/afternoon/specific slot]
-        - Duration needed: [X min]
-        - Calendar block: [suggested time]
-        
-        Rationale:
-        [Brief explanation of priority and timing]
-        
-        SPECIAL RULES:
-        
-        1. PROTECT Q2 TIME:
-           - Q2 is where executives build the future
-           - If calendar has no Q2 blocks, FLAG THIS
-           - Suggest specific times for strategic work
-        
-        2. DELEGATION CLARITY:
-           - For Q3, name specific team members if known
-           - Provide clear success criteria
-           - Set follow-up checkpoints
-        
-        3. DEADLINE REALISM:
-           - If deadline seems impossible, say so
-           - Suggest renegotiation or resource addition
-           - Don't just accept unrealistic timelines
-        
-        4. BATCH SIMILAR TASKS:
-           - Group emails, calls, approvals
-           - Reduce context switching
-           - Suggest specific batching times
-        
-        5. ENERGY MANAGEMENT:
-           - Deep work (Q2) → high energy times
-           - Administrative (Q3/Q4) → low energy times
-           - Don't schedule hard thinking after 4pm
-        
-        6. INTEGRATION WITH OTHER AGENTS:
-           - Email agent provides action items → you prioritize
-           - Calendar agent provides slots → you recommend scheduling
-           - You provide status → orchestrator coordinates
-        
-        COMMUNICATION STYLE:
-        - Direct and actionable
-        - Use data (scores, timelines)
-        - Be honest about what's realistic
-        - Push back on poor prioritization
-        - Protect the executive's strategic time
-        
-        When you detect tasks that are:
-        - All Q1 (crisis mode) → Flag "Need better planning"
-        - No Q2 (reactive mode) → Flag "Not building future value"
-        - Lots of Q3 (delegation needed) → Suggest team expansion
-        - Any Q4 taking time → Challenge necessity
+        Rules:
+        - Protect Q2 time (strategic work)
+        - Don't let Q3 hijack the day
+        - Be ruthless about Q4
+        - If everything is Q1, nothing is
         """,
         tools=[
             categorize_task_eisenhower,
@@ -208,182 +92,229 @@ def create_task_management_agent():
     return agent
 
 
-def quick_prioritize_task(
-    task_title: str,
-    task_description: str,
-    deadline: Optional[str] = None,
-    importance_hints: Optional[List[str]] = None
-) -> Dict:
+def prioritize_tasks(task_list: List[Dict], calendar_context: Optional[Dict] = None) -> Dict:
     """
-    Quick task prioritization for single task analysis.
+    Prioritize a list of tasks
     
     Args:
-        task_title: Short task name
-        task_description: Detailed description
-        deadline: ISO format date/time or relative (e.g., "tomorrow")
-        importance_hints: Factors indicating importance (e.g., ["CEO request", "revenue impact"])
-    
+        task_list: List of tasks with name, deadline, description
+        calendar_context: Optional calendar info for scheduling
+        
     Returns:
-        Dict with quadrant, priority score, and recommendations
+        Prioritized task list with quadrants and schedule
     """
-    agent = create_task_management_agent()
-    
-    query = f"""
-    Analyze this task:
-    
-    Title: {task_title}
-    Description: {task_description}
-    Deadline: {deadline if deadline else "Not specified"}
-    Importance Signals: {', '.join(importance_hints) if importance_hints else "None provided"}
-    
-    Provide:
-    1. Eisenhower quadrant
-    2. Priority score
-    3. Scheduling recommendation
-    4. Any dependencies to watch for
-    """
-    
-    response = agent.generate_content(query)
-    return response
-
-
-def process_email_action_items(action_items: List[Dict]) -> List[Dict]:
-    """
-    Batch process action items extracted from emails.
-    
-    Args:
-        action_items: List of tasks from email agent with format:
-            {
-                'task': str,
-                'deadline': str,
-                'source_email': str,
-                'sender': str,
-                'urgency_signals': List[str]
-            }
-    
-    Returns:
-        List of prioritized tasks with quadrants and scheduling
-    """
-    agent = create_task_management_agent()
-    
-    # Format tasks for batch processing
-    tasks_summary = f"Processing {len(action_items)} action items from emails:\n\n"
-    for idx, item in enumerate(action_items, 1):
-        tasks_summary += f"{idx}. {item['task']}\n"
-        tasks_summary += f"   Deadline: {item.get('deadline', 'None')}\n"
-        tasks_summary += f"   From: {item['sender']}\n"
-        if item.get('urgency_signals'):
-            tasks_summary += f"   Signals: {', '.join(item['urgency_signals'])}\n"
-        tasks_summary += "\n"
-    
-    query = f"""{tasks_summary}
-    
-    Use batch_process_tasks to efficiently categorize all of these.
-    
-    For each task, provide:
-    - Quadrant (Q1/Q2/Q3/Q4)
-    - Priority score
-    - When to tackle it
-    - Quick wins vs. time-intensive work
-    
-    Then give an executive summary:
-    - How many in each quadrant
-    - Recommended order of execution
-    - Any items to delegate immediately
-    - Total estimated time needed
-    """
-    
-    response = agent.generate_content(query)
-    return response
-
-
-def check_calendar_task_fit(
-    tasks: List[Dict],
-    available_calendar_slots: List[Dict]
-) -> Dict:
-    """
-    Match tasks to calendar availability using smart scheduling.
-    
-    Args:
-        tasks: List of prioritized tasks with time estimates
-        available_calendar_slots: Free time blocks from calendar agent
-    
-    Returns:
-        Scheduling plan with task-to-slot mapping
-    """
-    agent = create_task_management_agent()
-    
-    tasks_summary = "\n".join([
-        f"- {t['title']} (Q{t['quadrant']}, {t['estimated_duration']}min)"
-        for t in tasks
-    ])
-    
-    slots_summary = "\n".join([
-        f"- {s['start']} to {s['end']} ({s['duration']}min)"
-        for s in available_calendar_slots
-    ])
-    
-    query = f"""
-    Tasks to schedule:
-    {tasks_summary}
-    
-    Available calendar slots:
-    {slots_summary}
-    
-    Use suggest_task_schedule to create optimal task-to-calendar mapping.
-    
-    Consider:
-    - Q1 tasks need immediate slots
-    - Q2 deep work needs 90+ min blocks
-    - Morning slots for high-focus work
-    - Afternoon for lighter tasks
-    - Buffer time between different task types
-    
-    Provide a specific scheduling plan.
-    """
-    
-    response = agent.generate_content(query)
-    return response
-
-
-# Test and demonstration
-if __name__ == "__main__":
-    print("=" * 70)
-    print("Task Management Agent - Eisenhower Matrix + Smart Scheduling")
-    print("=" * 70)
     
     agent = create_task_management_agent()
     
-    print("\n✅ Agent initialized with capabilities:")
-    print("   - Eisenhower Matrix categorization")
-    print("   - Deadline urgency scoring (0-10)")
-    print("   - Dependency tracking")
-    print("   - Calendar-aware scheduling")
-    print("   - Batch email task processing")
-    print(f"\n   Tools loaded: {len(agent.tools)}")
-    print("   Model: gemini-2.5-flash-lite")
+    # format tasks
+    task_summary = f"Prioritize {len(task_list)} tasks:\n\n"
+    for i, task in enumerate(task_list, 1):
+        task_summary += f"{i}. {task.get('name', 'Unnamed')}\n"
+        if task.get('deadline'):
+            task_summary += f"   Deadline: {task['deadline']}\n"
+        if task.get('description'):
+            task_summary += f"   Details: {task['description']}\n"
+        task_summary += "\n"
     
-    # Demo: Single task analysis
-    print("\n" + "=" * 70)
-    print("DEMO: Analyzing a single task")
-    print("=" * 70)
+    query = f"""{task_summary}
     
-    demo_task = {
-        'title': 'Prepare Q4 Board Presentation',
-        'description': 'Create comprehensive slide deck covering financials, strategy, and team updates for board meeting',
-        'deadline': '2024-11-25 09:00',
-        'importance_hints': ['CEO request', 'board meeting', 'strategic decision']
+    Analyze each task:
+    1. Categorize into Eisenhower quadrant
+    2. Calculate urgency score
+    3. Check dependencies
+    4. Suggest optimal schedule
+    
+    Use batch_process_tasks for efficiency.
+    
+    Return prioritized list with clear actions.
+    """
+    
+    if calendar_context:
+        query += f"\n\nCalendar context: {calendar_context}"
+    
+    # let agent work
+    response = agent.invoke(query)
+    
+    return {
+        "prioritized_tasks": response,
+        "task_count": len(task_list),
+        "analysis_timestamp": datetime.now().isoformat()
     }
+
+
+def process_email_tasks(email_action_items: List[Dict]) -> Dict:
+    """
+    Process action items from email agent
     
-    print(f"\nTask: {demo_task['title']}")
-    print(f"Deadline: {demo_task['deadline']}")
-    print(f"Importance: {', '.join(demo_task['importance_hints'])}")
-    print("\nAnalyzing...")
+    Quick triage for email-extracted tasks
+    """
     
-    # Note: Actual execution would call the agent
-    print("\n[Would analyze and categorize into Eisenhower quadrant]")
-    print("[Would calculate priority score and scheduling recommendation]")
+    agent = create_task_management_agent()
     
-    print("\n" + "=" * 70)
-    print("Ready for integration with Email and Calendar agents! 🚀")
-    print("=" * 70)
+    # quick format
+    task_summary = "Tasks from email:\n"
+    for item in email_action_items:
+        task_summary += f"- {item.get('task', 'Unknown')}"
+        if item.get('deadline'):
+            task_summary += f" (due: {item['deadline']})"
+        task_summary += "\n"
+    
+    query = f"""{task_summary}
+    
+    Quick prioritization:
+    1. Batch process all tasks
+    2. Focus on Q1 and Q2 only
+    3. Suggest immediate actions
+    """
+    
+    response = agent.invoke(query)
+    
+    return {
+        "processed_tasks": response,
+        "email_task_count": len(email_action_items),
+        "processing_time": datetime.now().isoformat()
+    }
+
+
+def get_daily_priorities(all_tasks: List[Dict], max_tasks: int = 5) -> Dict:
+    """
+    Get top priorities for today
+    
+    Returns max 5 tasks to focus on
+    """
+    
+    agent = create_task_management_agent()
+    
+    query = f"""From these {len(all_tasks)} tasks, identify the TOP {max_tasks} for today.
+    
+    Selection criteria:
+    1. All Q1 tasks (urgent + important)
+    2. High-value Q2 tasks if time allows
+    3. Nothing from Q3/Q4 unless critical
+    
+    Tasks: {all_tasks}
+    
+    Return:
+    - Top {max_tasks} tasks with timing
+    - Brief reasoning
+    - Suggested order
+    """
+    
+    response = agent.invoke(query)
+    
+    return {
+        "daily_priorities": response,
+        "total_tasks": len(all_tasks),
+        "selected_count": max_tasks,
+        "date": datetime.now().strftime("%Y-%m-%d")
+    }
+
+
+def analyze_task_load(tasks: List[Dict]) -> Dict:
+    """
+    Analyze overall task load and health
+    
+    Are we in firefighting mode or strategic?
+    """
+    
+    # quick analysis without agent
+    q1_count = 0
+    q2_count = 0
+    q3_count = 0
+    q4_count = 0
+    
+    # rough categorization
+    for task in tasks:
+        desc = str(task).lower()
+        if "urgent" in desc and "important" in desc:
+            q1_count += 1
+        elif "important" in desc and "urgent" not in desc:
+            q2_count += 1
+        elif "urgent" in desc:
+            q3_count += 1
+        else:
+            q4_count += 1
+    
+    total = len(tasks)
+    
+    # health check
+    if q1_count > total * 0.5:
+        health = "CRISIS MODE - Too many urgent/important tasks"
+        recommendation = "Block time to reduce Q1 backlog"
+    elif q2_count > total * 0.3:
+        health = "HEALTHY - Good focus on strategic work"
+        recommendation = "Maintain Q2 focus"
+    elif q3_count > total * 0.4:
+        health = "REACTIVE - Too many urgent but unimportant"
+        recommendation = "Delegate or batch Q3 tasks"
+    else:
+        health = "UNFOCUSED - Mixed priorities"
+        recommendation = "Reassess task importance"
+    
+    return {
+        "task_distribution": {
+            "Q1_urgent_important": q1_count,
+            "Q2_important_not_urgent": q2_count,
+            "Q3_urgent_not_important": q3_count,
+            "Q4_neither": q4_count
+        },
+        "total_tasks": total,
+        "health_status": health,
+        "recommendation": recommendation,
+        "q2_percentage": round((q2_count / total * 100) if total > 0 else 0, 1)
+    }
+
+
+if __name__ == "__main__":
+    print("Task Management Agent Test")
+    print("-" * 40)
+    
+    # test tasks
+    test_tasks = [
+        {
+            "name": "Finish Q4 budget presentation",
+            "deadline": "today",
+            "description": "Board meeting tomorrow"
+        },
+        {
+            "name": "Review team performance",
+            "deadline": "next week",
+            "description": "Quarterly reviews"
+        },
+        {
+            "name": "Reply to client escalation",
+            "deadline": "today",
+            "description": "Angry about delays"
+        },
+        {
+            "name": "Plan 2025 strategy",
+            "deadline": "next month",
+            "description": "Strategic planning"
+        },
+        {
+            "name": "Attend optional webinar",
+            "deadline": "tomorrow",
+            "description": "Industry trends"
+        }
+    ]
+    
+    print(f"Testing with {len(test_tasks)} tasks\n")
+    
+    # quick analysis
+    analysis = analyze_task_load(test_tasks)
+    print(f"Task health: {analysis['health_status']}")
+    print(f"Q2 focus: {analysis['q2_percentage']}%")
+    print(f"Recommendation: {analysis['recommendation']}\n")
+    
+    # prioritize
+    try:
+        agent = create_task_management_agent()
+        print("Agent ready")
+        
+        result = prioritize_tasks(test_tasks)
+        print("\nPrioritized tasks:")
+        print(result['prioritized_tasks'])
+        
+    except Exception as e:
+        print(f"Error: {e}")
+        print("Using fallback analysis")
