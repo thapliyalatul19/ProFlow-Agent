@@ -28,7 +28,60 @@ This adds up to 3-4 hours daily spent on coordination instead of strategic work.
 
 ## The Solution
 
-ProFlow coordinates five specialized agents:
+ProFlow coordinates five specialized agents to automate the workflow:
+
+```
+Morning workflow:
+100+ unread emails
+   |
+   v
+Email Agent -----> Classifies to 8-tier priority (P0-P7)
+                   Extracts action items with deadlines
+                   Detects meeting requests
+   |
+   v
+Calendar Agent --> Identifies conflicts and back-to-back meetings
+                   Calculates available focus time
+                   Suggests schedule optimizations
+   |
+   v
+Meeting Prep ----> Researches participants (role, history)
+                   Searches past emails for context
+                   Generates briefing with talking points
+   |
+   v
+Task Agent ------> Eisenhower Matrix categorization
+                   Urgency scoring (0-10) with deadlines
+                   Calendar-aware scheduling recommendations
+   |
+   v
+Scheduling Agent-> Multi-party availability checking
+                   Conflict resolution with alternatives
+                   Automated invitation generation
+
+Result: What took 20 minutes manually now takes ~8 seconds
+```
+
+## Architecture
+
+ProFlow uses a hierarchical multi-agent system where a master orchestrator coordinates five specialized agents:
+
+```
+                    ProFlow Orchestrator
+                   (Workflow Coordinator)
+                            |
+          +-----------------+------------------+
+          |                 |                  |
+     Email Agent      Calendar Agent    Meeting Prep Agent
+          |                 |                  |
+          +-----------------+------------------+
+                            |
+          +-----------------+------------------+
+          |                                    |
+     Task Agent                        Scheduling Agent
+```
+
+**Agent Specializations:**
 
 **Email Intelligence Agent** - 8-tier priority classification (P0-P7), urgency scoring (0-10 scale), action item extraction, meeting request detection
 
@@ -40,12 +93,34 @@ ProFlow coordinates five specialized agents:
 
 **Scheduling Coordinator Agent** - Multi-party availability checking, iterative conflict resolution (up to 3 retries), optimal time slot identification
 
-The orchestrator coordinates these agents using:
-- Sequential pipelines for daily briefing workflow
-- Parallel execution for concurrent meeting research
-- Iterative loops for scheduling scenarios
+### Workflow Patterns
 
-## Architecture
+The orchestrator uses three different coordination patterns:
+
+**Sequential Pipeline** (Daily Briefing)
+```
+Email Agent -> Calendar Agent -> Meeting Prep Agent -> Combined Briefing
+```
+Each agent's output feeds into the next, building comprehensive context.
+
+**Parallel Execution** (Meeting Preparation)
+```
+                  +-> Search Email History --+
+Meeting Topic --->+-> Research Participants -+-> Combined Briefing
+                  +-> Find Past Meetings ----+
+```
+Multiple searches run concurrently for faster results.
+
+**Iterative Loop** (Scheduling)
+```
+Check Availability -> Conflict? -> Find Alternatives -> Retry (max 3x) -> Success
+                           |
+                           v (No conflict)
+                      Send Invite
+```
+Handles scheduling conflicts with intelligent retry logic.
+
+## Technical Details
 
 The system is built on FastMCP servers following the Model Context Protocol standard. All agents communicate through Agent-to-Agent (A2A) protocol, coordinated by the ProFlow Orchestrator.
 
