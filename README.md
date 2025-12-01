@@ -116,26 +116,24 @@ Check Availability -> Conflict? -> Find Alternatives -> Retry (max 3x)
 
 ## Technical Stack
 
-Built using Google's Agentic Developer Kit (ADK). All agents communicate through ADK's framework.
+Built using Google's Agentic Developer Kit (ADK) framework structure.
 
-Each agent has specialized tools (15+ functions):
-- Email tools for classification and extraction
-- Calendar tools for conflict detection
-- Meeting prep tools for research
-- Task management tools for prioritization
-- Scheduling tools for coordination
+Components:
+- Python-based agent modules using Google ADK patterns
+- Tool functions for data processing (15+ functions)
+- Orchestrator for workflow coordination
+- Mock data structures for testing/demonstration
 
-External integrations:
-- Gmail API for email parsing
-- Google Calendar API for schedule processing
-- Gemini 2.0-flash-lite for AI reasoning
+Dependencies:
+- Google ADK for agent structure
+- Gemini API for LLM capabilities
+- Standard Python libraries
 
 ## Installation
 
 Requirements:
 - Python 3.10+
-- Google Cloud project with Gmail and Calendar APIs enabled
-- Gemini API access
+- Google Cloud project (for Gemini API access)
 
 Setup:
 
@@ -153,23 +151,34 @@ pip install -r requirements.txt
 
 # Configure environment
 cp .env.example .env
-# Edit .env with your Google Cloud credentials
+# Edit .env with your Gemini API credentials
 ```
 
-Configure these in .env:
+Configure in .env:
 - GOOGLE_CLOUD_PROJECT
-- GOOGLE_CLOUD_LOCATION  
-- Gmail and Calendar API credentials
+- GOOGLE_CLOUD_LOCATION
 
 ## Usage
 
-Run the daily briefing workflow:
+The system currently works with mock data for demonstration purposes.
+
+Run the daily briefing workflow with sample data:
 
 ```python
 from src.workflows.orchestrator import ProFlowOrchestrator
 
+# Create orchestrator
 orchestrator = ProFlowOrchestrator()
-briefing = orchestrator.run_daily_briefing()
+
+# Use with mock email and calendar data
+mock_emails = [
+    {"subject": "Urgent: Budget Review", "sender": "cfo@company.com", "body": "..."}
+]
+mock_calendar = [
+    {"summary": "Team Standup", "start": "09:00", "end": "09:30"}
+]
+
+briefing = orchestrator.generate_daily_briefing(mock_emails, mock_calendar)
 print(briefing)
 ```
 
@@ -230,17 +239,18 @@ ProFlow-Agent/
 
 ## Implementation Notes
 
-**Working features:**
-- All five agents functional and tested
-- Real Gmail and Calendar API integration
-- Multi-agent coordination through Google ADK
-- Sequential, parallel, and loop workflow patterns
-- Error handling and logging
+**Current implementation:**
+- Five agent modules with basic structure
+- Tools for processing email and calendar data structures
+- Orchestrator that coordinates function calls
+- Works with mock/simulated data for demonstration
 
-**Current limitations:**
-- Meeting prep uses simulated participant data (Google Drive integration planned)
-- Single-user deployment (multi-tenant architecture not built yet)
-- Batch processing only (no real-time webhooks)
+**Limitations:**
+- No actual Gmail or Calendar API integration (uses mock data)
+- Sequential execution only (no true parallel processing)
+- Simulated participant research data
+- Single-user, local execution only
+- No real external API connections
 
 ## Future Enhancements
 
