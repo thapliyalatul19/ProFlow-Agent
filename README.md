@@ -116,9 +116,9 @@ Check Availability -> Conflict? -> Find Alternatives -> Retry (max 3x)
 
 ## Technical Stack
 
-Built on FastMCP servers following the Model Context Protocol standard. All agents communicate through Agent-to-Agent (A2A) protocol.
+Built using Google's Agentic Developer Kit (ADK). All agents communicate through ADK's framework.
 
-Each agent has specialized tools (25+ total):
+Each agent has specialized tools (15+ functions):
 - Email tools for classification and extraction
 - Calendar tools for conflict detection
 - Meeting prep tools for research
@@ -233,7 +233,7 @@ ProFlow-Agent/
 **Working features:**
 - All five agents functional and tested
 - Real Gmail and Calendar API integration
-- Multi-agent coordination through A2A protocol
+- Multi-agent coordination through Google ADK
 - Sequential, parallel, and loop workflow patterns
 - Error handling and logging
 
@@ -265,9 +265,9 @@ This project demonstrates concepts from the Google Agentic AI course:
 - Sequential agents (daily briefing pipeline)
 - Parallel agents (concurrent meeting prep searches)
 - Loop agents (iterative scheduling conflict resolution)
-- Custom tools (25+ MCP-compliant tools)
+- Custom tools (15+ functions across five domains)
 - Sessions and state management
-- Agent-to-Agent communication protocol
+- Google ADK for agent coordination
 - External API integration
 - Observability
 
