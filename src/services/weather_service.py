@@ -17,8 +17,13 @@ class WeatherService:
     """Real external API integration - OpenWeatherMap"""
     
     def __init__(self):
-        # Free API key (or use env variable)
-        self.api_key = os.getenv('OPENWEATHER_API_KEY', '8b4c67d8e5f29a7c9d3e4f5a6b7c8d9e')
+        # Get API key from environment variable (required)
+        self.api_key = os.getenv('OPENWEATHER_API_KEY')
+        if not self.api_key:
+            self.logger.warning(
+                "OPENWEATHER_API_KEY not set. Weather API calls will fail. "
+                "Set it in .env file or environment variable."
+            )
         self.base_url = 'http://api.openweathermap.org/data/2.5'
         self.logger = logging.getLogger(__name__)
         
@@ -64,6 +69,11 @@ class WeatherService:
             return self.cache[cache_key]
         
         try:
+            # Check if API key is available
+            if not self.api_key:
+                self.logger.warning("No API key configured, using default weather data")
+                raise ValueError("API key not configured")
+            
             # Make real API call
             url = f"{self.base_url}/weather"
             params = {

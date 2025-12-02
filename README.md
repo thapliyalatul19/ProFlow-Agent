@@ -214,8 +214,11 @@ cp .env.example .env
 ```
 
 Configure in .env:
-- GOOGLE_CLOUD_PROJECT
-- GOOGLE_CLOUD_LOCATION
+- GOOGLE_CLOUD_PROJECT (for Gemini API)
+- GOOGLE_CLOUD_LOCATION (default: us-central1)
+- OPENWEATHER_API_KEY (get free key at https://openweathermap.org/api)
+
+**Note:** The weather service will work without an API key (uses defaults), but for real weather data, you need to set OPENWEATHER_API_KEY in your .env file.
 
 ## Running the System
 
