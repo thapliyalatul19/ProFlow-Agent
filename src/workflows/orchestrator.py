@@ -5,14 +5,18 @@ Coordinates Email Intelligence, Calendar Optimization, Meeting Preparation,
 and Scheduling Coordinator agents to deliver executive productivity workflows.
 """
 
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional, Tuple
 import sys
 import os
+import time
 
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tools import email_tools, calendar_tools, meeting_prep_tools, scheduling_tools
+from data import read_emails_from_csv, read_calendar_from_json
+from utils.logger import setup_logging, get_logger
+from utils.error_handler import get_error_handler
 
 
 class ProFlowOrchestrator:
@@ -26,8 +30,21 @@ class ProFlowOrchestrator:
     - Scheduling Coordinator Agent
     """
     
-    def __init__(self):
-        """Initialize the orchestrator with all agent tools."""
+    def __init__(self, enable_logging: bool = True):
+        """
+        Initialize the orchestrator with all agent tools.
+        
+        Args:
+            enable_logging: Whether to enable logging (default: True)
+        """
+        # Setup logging
+        if enable_logging:
+            self.logger = setup_logging()
+        else:
+            self.logger = get_logger()
+        
+        self.error_handler = get_error_handler()
+        
         self.email_tools = email_tools
         self.calendar_tools = calendar_tools
         self.meeting_prep_tools = meeting_prep_tools
@@ -42,6 +59,118 @@ class ProFlowOrchestrator:
             'preferred_meeting_times': ['morning', 'early_afternoon'],
             'timezone': 'US/Mountain'
         }
+        
+        self.logger.info("ProFlowOrchestrator initialized")
+    
+    def load_data_from_files(
+        self,
+        email_csv_path: Optional[str] = None,
+        calendar_json_path: Optional[str] = None
+    ) -> Tuple[List[Dict], List[Dict]]:
+        """
+        Load email and calendar data from files with error handling.
+        
+        Args:
+            email_csv_path: Path to email CSV file. If None, uses default.
+            calendar_json_path: Path to calendar JSON file. If None, uses default.
+            
+        Returns:
+            Tuple of (emails, calendar_events)
+        """
+        self.logger.info("Loading data from files...")
+        start_time = time.time()
+        
+        emails = []
+        calendar_events = []
+        
+        # Load emails with error handling
+        try:
+            emails = read_emails_from_csv(email_csv_path)
+            self.logger.info(f"✓ Loaded {len(emails)} emails")
+        except FileNotFoundError as e:
+            self.logger.warning(f"Email file not found: {e}")
+            # Try to recover
+            from pathlib import Path
+            if email_csv_path is None:
+                project_root = Path(__file__).parent.parent.parent
+                email_csv_path = project_root / "data" / "sample_emails.csv"
+            
+            default_emails_csv = "subject,from,body,timestamp\n"
+            default_emails_csv += "Welcome,admin@company.com,Welcome to ProFlow,2024-11-20T08:00:00\n"
+            
+            recovery_result = self.error_handler.handle_error(
+                e,
+                context={
+                    'file_path': str(email_csv_path),
+                    'default_content': default_emails_csv,
+                    'file_type': 'email CSV'
+                }
+            )
+            
+            if recovery_result:
+                try:
+                    emails = read_emails_from_csv(email_csv_path)
+                    self.logger.info(f"✓ Loaded {len(emails)} emails from recovered file")
+                except Exception as e2:
+                    self.logger.error(f"Failed to load recovered file: {e2}")
+                    emails = []
+            else:
+                self.logger.warning("Using empty email list")
+                emails = []
+        
+        except Exception as e:
+            self.logger.error(f"Error loading emails: {e}", exc_info=True)
+            emails = []
+        
+        # Load calendar with error handling
+        try:
+            calendar_events = read_calendar_from_json(calendar_json_path)
+            self.logger.info(f"✓ Loaded {len(calendar_events)} calendar events")
+        except FileNotFoundError as e:
+            self.logger.warning(f"Calendar file not found: {e}")
+            # Try to recover
+            from pathlib import Path
+            if calendar_json_path is None:
+                project_root = Path(__file__).parent.parent.parent
+                calendar_json_path = project_root / "data" / "calendar.json"
+            
+            default_calendar = [{
+                "summary": "No events",
+                "start": "09:00",
+                "end": "17:00",
+                "duration_minutes": 480,
+                "type": "focus",
+                "attendees": []
+            }]
+            
+            recovery_result = self.error_handler.handle_error(
+                e,
+                context={
+                    'file_path': str(calendar_json_path),
+                    'default_content': default_calendar,
+                    'file_type': 'calendar JSON'
+                }
+            )
+            
+            if recovery_result:
+                try:
+                    calendar_events = read_calendar_from_json(calendar_json_path)
+                    self.logger.info(f"✓ Loaded {len(calendar_events)} calendar events from recovered file")
+                except Exception as e2:
+                    self.logger.error(f"Failed to load recovered file: {e2}")
+                    calendar_events = []
+            else:
+                self.logger.warning("Using default calendar")
+                calendar_events = default_calendar
+        
+        except Exception as e:
+            self.logger.error(f"Error loading calendar: {e}", exc_info=True)
+            calendar_events = []
+        
+        elapsed_time = time.time() - start_time
+        self.logger.info(f"Data loading complete in {elapsed_time:.3f}s")
+        
+        return emails, calendar_events
     
     def generate_daily_briefing(self, emails: List[Dict], calendar_events: List[Dict]) -> Dict:
         """
@@ -56,31 +185,57 @@ class ProFlowOrchestrator:
         Returns:
             Complete daily briefing
         """
+        self.logger.info("Starting daily briefing generation")
+        start_time = time.time()
+        
         briefing = {
             'generated_at': 'Morning',
             'workflow_type': 'sequential',
             'components': {}
         }
         
-        # Step 1: Email Intelligence
-        print("📧 Analyzing emails...")
-        email_analysis = self._analyze_emails(emails)
-        briefing['components']['email_intelligence'] = email_analysis
-        
-        # Step 2: Calendar Optimization  
-        print("📅 Optimizing schedule...")
-        schedule_analysis = self._optimize_schedule(calendar_events)
-        briefing['components']['calendar_optimization'] = schedule_analysis
-        
-        # Step 3: Meeting Preparation (for today's meetings)
-        print("📋 Preparing meeting briefings...")
-        meeting_briefings = self._prepare_meetings(calendar_events)
-        briefing['components']['meeting_preparation'] = meeting_briefings
-        
-        # Step 4: Generate Summary
-        briefing['summary'] = self._generate_briefing_summary(
-            email_analysis, schedule_analysis, meeting_briefings
-        )
+        try:
+            # Step 1: Email Intelligence
+            self.logger.info("Step 1: Analyzing emails...")
+            print("📧 Analyzing emails...")
+            email_start = time.time()
+            email_analysis = self._analyze_emails(emails)
+            email_time = time.time() - email_start
+            self.logger.info(f"Email analysis complete in {email_time:.3f}s - {len(emails)} emails")
+            briefing['components']['email_intelligence'] = email_analysis
+            
+            # Step 2: Calendar Optimization  
+            self.logger.info("Step 2: Optimizing schedule...")
+            print("📅 Optimizing schedule...")
+            calendar_start = time.time()
+            schedule_analysis = self._optimize_schedule(calendar_events)
+            calendar_time = time.time() - calendar_start
+            self.logger.info(f"Calendar optimization complete in {calendar_time:.3f}s - {len(calendar_events)} events")
+            briefing['components']['calendar_optimization'] = schedule_analysis
+            
+            # Step 3: Meeting Preparation (for today's meetings)
+            self.logger.info("Step 3: Preparing meeting briefings...")
+            print("📋 Preparing meeting briefings...")
+            meeting_start = time.time()
+            meeting_briefings = self._prepare_meetings(calendar_events)
+            meeting_time = time.time() - meeting_start
+            self.logger.info(f"Meeting preparation complete in {meeting_time:.3f}s - {len(meeting_briefings)} briefings")
+            briefing['components']['meeting_preparation'] = meeting_briefings
+            
+            # Step 4: Generate Summary
+            briefing['summary'] = self._generate_briefing_summary(
+                email_analysis, schedule_analysis, meeting_briefings
+            )
+            
+            total_time = time.time() - start_time
+            self.logger.info(f"Daily briefing generation complete in {total_time:.3f}s")
+            self.logger.debug(f"Performance breakdown - Email: {email_time:.3f}s, Calendar: {calendar_time:.3f}s, Meeting: {meeting_time:.3f}s")
+            
+        except Exception as e:
+            self.logger.error(f"Error generating daily briefing: {e}", exc_info=True)
+            self.error_handler.handle_error(e, context={'operation': 'generate_daily_briefing'})
+            # Return partial briefing if possible
+            briefing['error'] = str(e)
         
         return briefing
     
@@ -125,8 +280,11 @@ class ProFlowOrchestrator:
             
             # Check for meeting requests
             if 'meeting' in email.get('subject', '').lower():
-                meeting_request = self.email_tools.extract_meeting_requests(email)
-                if meeting_request:
+                meeting_request = self.email_tools.extract_meeting_requests(
+                    subject=email.get('subject', ''),
+                    body=email.get('body', '')
+                )
+                if meeting_request and meeting_request.get('meetings_detected'):
                     meeting_requests.append(meeting_request)
         
         return {
