@@ -12,3 +12,5 @@ pytest-cov
 pytest-asyncio
 python-dotenv
 pyyaml
+flask>=2.3.0
+requests>=2.31.0

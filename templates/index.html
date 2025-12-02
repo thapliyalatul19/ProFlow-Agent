@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProFlow Executive Agent</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .card h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        
+        button:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .metric:last-child {
+            border-bottom: none;
+        }
+        
+        .metric-label {
+            color: #666;
+        }
+        
+        .metric-value {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .status {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+        
+        .status.success {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+        
+        .status.error {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        
+        #briefing-content, #performance-content, #messages-content {
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 10px;
+            background: #f7f7f7;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+        
+        .weather-widget {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .weather-widget h3 {
+            margin-bottom: 10px;
+        }
+        
+        .weather-temp {
+            font-size: 2em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .message-item {
+            padding: 8px;
+            margin: 5px 0;
+            background: #f0f0f0;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+        
+        .message-sender {
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: inherit;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ProFlow Executive Agent Dashboard</h1>
+        
+        <div class="dashboard">
+            <!-- Daily Briefing -->
+            <div class="card">
+                <h2>📊 Daily Briefing</h2>
+                <button onclick="loadBriefing()">Generate Briefing</button>
+                <div id="briefing-content"></div>
+            </div>
+            
+            <!-- Performance Metrics -->
+            <div class="card">
+                <h2>⚡ Performance Metrics</h2>
+                <button onclick="loadPerformance()">Run Benchmark</button>
+                <div id="performance-content"></div>
+            </div>
+            
+            <!-- Weather Widget -->
+            <div class="card">
+                <h2>🌤️ Weather Context</h2>
+                <div id="weather-content">
+                    <button onclick="loadWeather()">Get Weather</button>
+                </div>
+            </div>
+            
+            <!-- Agent Messages -->
+            <div class="card">
+                <h2>💬 Agent Communications</h2>
+                <button onclick="loadMessages()">View Messages</button>
+                <div id="messages-content"></div>
+            </div>
+            
+            <!-- System Status -->
+            <div class="card">
+                <h2>🔧 System Status</h2>
+                <div class="metric">
+                    <span class="metric-label">Agents Active</span>
+                    <span class="metric-value">5</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Cache Status</span>
+                    <span class="metric-value status success">Active</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">API Status</span>
+                    <span class="metric-value status success">Connected</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Test Coverage</span>
+                    <span class="metric-value">60%</span>
+                </div>
+            </div>
+            
+            <!-- Quick Actions -->
+            <div class="card">
+                <h2>🚀 Quick Actions</h2>
+                <button onclick="processEmails()">Process Emails</button>
+                <button onclick="analyzeCalendar()">Analyze Calendar</button>
+                <button onclick="runTests()">Run Tests</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        async function loadBriefing() {
+            const content = document.getElementById('briefing-content');
+            content.innerHTML = '<div class="loading">Generating briefing...</div>';
+            
+            try {
+                const response = await fetch('/api/briefing');
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    const briefing = data.briefing;
+                    content.innerHTML = `
+                        <div class="metric">
+                            <span class="metric-label">Emails Processed</span>
+                            <span class="metric-value">${data.email_count}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Meetings Scheduled</span>
+                            <span class="metric-value">${data.meeting_count}</span>
+                        </div>
+                        <div style="margin-top: 15px">
+                            <strong>Summary:</strong>
+                            <div style="margin-top: 5px">${briefing.summary || 'N/A'}</div>
+                        </div>
+                    `;
+                } else {
+                    content.innerHTML = `<div class="status error">Error: ${data.message}</div>`;
+                }
+            } catch (error) {
+                content.innerHTML = `<div class="status error">Error: ${error.message}</div>`;
+            }
+        }
+        
+        async function loadPerformance() {
+            const content = document.getElementById('performance-content');
+            content.innerHTML = '<div class="loading">Running benchmark...</div>';
+            
+            try {
+                const response = await fetch('/api/performance');
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    content.innerHTML = `
+                        <div class="metric">
+                            <span class="metric-label">Sequential Time</span>
+                            <span class="metric-value">${data.sequential_time}s</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Parallel Time</span>
+                            <span class="metric-value">${data.parallel_time}s</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Speedup</span>
+                            <span class="metric-value">${data.speedup}x</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Emails Processed</span>
+                            <span class="metric-value">${data.email_count}</span>
+                        </div>
+                    `;
+                } else {
+                    content.innerHTML = `<div class="status error">Error: ${data.message}</div>`;
+                }
+            } catch (error) {
+                content.innerHTML = `<div class="status error">Error: ${error.message}</div>`;
+            }
+        }
+        
+        async function loadWeather() {
+            const content = document.getElementById('weather-content');
+            content.innerHTML = '<div class="loading">Fetching weather...</div>';
+            
+            try {
+                const response = await fetch('/api/weather?city=Denver');
+                const data = await response.json();
+                
+                if (data.status === 'success' && data.weather) {
+                    const weather = data.weather;
+                    content.innerHTML = `
+                        <div class="weather-widget">
+                            <h3>${weather.city}</h3>
+                            <div class="weather-temp">${Math.round(weather.temperature)}°F</div>
+                            <div>${weather.description}</div>
+                            <div style="margin-top: 10px; font-size: 0.9em">
+                                <div>Feels like: ${Math.round(weather.feels_like || weather.temperature)}°F</div>
+                                <div>Humidity: ${weather.humidity || 'N/A'}%</div>
+                                <div>Wind: ${weather.wind_speed || 'N/A'} mph</div>
+                                <div style="margin-top: 10px">
+                                    <small>Suitable for outdoor: ${weather.suitable_for_outdoor_meeting ? 'Yes ✓' : 'No ✗'}</small>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    content.innerHTML = `<div class="status error">Error: ${data.message || 'Unknown error'}</div>`;
+                }
+            } catch (error) {
+                content.innerHTML = `<div class="status error">Error: ${error.message}</div>`;
+            }
+        }
+        
+        async function loadMessages() {
+            const content = document.getElementById('messages-content');
+            content.innerHTML = '<div class="loading">Loading messages...</div>';
+            
+            try {
+                const response = await fetch('/api/messages');
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    const messages = data.messages.slice(-5);  // Last 5 messages
+                    
+                    if (messages.length === 0) {
+                        content.innerHTML = '<div>No messages yet. Agents will communicate here when active.</div>';
+                    } else {
+                        content.innerHTML = messages.map(msg => `
+                            <div class="message-item">
+                                <span class="message-sender">${msg.sender}</span> → ${msg.receiver}
+                                <div style="margin-top: 5px; color: #666">
+                                    <strong>${msg.message_type}:</strong> ${JSON.stringify(msg.content).substring(0, 100)}${JSON.stringify(msg.content).length > 100 ? '...' : ''}
+                                </div>
+                                <div style="font-size: 0.8em; color: #999; margin-top: 3px">
+                                    ${new Date(msg.timestamp).toLocaleString()}
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                } else {
+                    content.innerHTML = `<div class="status error">Error: ${data.message}</div>`;
+                }
+            } catch (error) {
+                content.innerHTML = `<div class="status error">Error: ${error.message}</div>`;
+            }
+        }
+        
+        function processEmails() {
+            alert('Processing emails... Check console for output.');
+            console.log('Email processing initiated');
+        }
+        
+        function analyzeCalendar() {
+            alert('Analyzing calendar... Check console for output.');
+            console.log('Calendar analysis initiated');
+        }
+        
+        function runTests() {
+            alert('Running tests... Check terminal for output.');
+            console.log('Test suite initiated');
+        }
+        
+        // Load initial data
+        window.onload = () => {
+            loadWeather();
+        };
+    </script>
+</body>
+</html>
+

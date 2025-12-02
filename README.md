@@ -23,8 +23,11 @@ ProFlow is a productivity automation system that processes executive workflows u
 **Production-Ready Features:**
 - Comprehensive error handling with recovery strategies
 - Full logging system with timestamped log files
-- 30+ working tests with 60% code coverage
+- 50+ working tests with 62% code coverage
 - State persistence across sessions
+- Real external API integration (OpenWeatherMap)
+- Agent-to-agent messaging system
+- Web dashboard for monitoring and control
 
 The project demonstrates multi-agent orchestration patterns: sequential workflows for daily briefings, parallel execution for email processing, and state management for caching.
 
@@ -138,14 +141,20 @@ Check Availability -> Conflict? -> Find Alternatives -> Retry (max 3x)
 - Cached processing: <0.01 seconds (250x faster than sequential)
 
 **Test Coverage:**
-- Total tests: 30 (all passing)
-- Code coverage: 60%
+- Total tests: 50 (all passing)
+- Code coverage: 62%
 - Test types: Unit, integration, and end-to-end workflows
 
 **State Management:**
 - Session persistence: JSON-based state files
 - Cache hit rate: 100% on second run
 - History tracking: All operations logged with timestamps
+
+**Advanced Features:**
+- Real external API integration (OpenWeatherMap)
+- Agent-to-agent messaging system
+- Web dashboard (Flask-based UI)
+- Comprehensive error handling and recovery
 
 ## Technical Stack
 
@@ -155,6 +164,8 @@ Built using Python 3.10+ with real file-based data processing.
 - Python 3.10+ with asyncio for parallel processing
 - CSV/JSON for data persistence and state management
 - Google ADK framework for agent structure
+- Flask for web dashboard
+- OpenWeatherMap API for real external integration
 - Full logging system with file and console handlers
 
 **Components:**
@@ -165,10 +176,15 @@ Built using Python 3.10+ with real file-based data processing.
 - Session manager for state persistence
 - Error handler with recovery strategies
 - Async orchestrator for parallel processing
+- Weather service with API integration
+- Message bus for agent-to-agent communication
+- Web dashboard for monitoring and control
 
 **Dependencies:**
 - Google ADK for agent structure
 - Gemini API for LLM capabilities (optional, for agent features)
+- Flask for web dashboard
+- requests for external API calls
 - pytest for testing
 - Standard Python libraries (asyncio, json, csv, pathlib)
 
@@ -234,6 +250,21 @@ This demonstrates:
 - Error recovery (handles missing files)
 - Performance metrics
 
+### Web Dashboard
+
+Start the Flask web interface:
+```bash
+python web_app.py
+# Open http://localhost:5000 in your browser
+```
+
+The web dashboard provides:
+- Real-time briefing generation
+- Performance benchmarking (sequential vs parallel)
+- Weather integration (live API data)
+- Agent message monitoring
+- System status display
+
 ### Programmatic Usage
 
 **Load data and generate briefing:**
@@ -285,6 +316,15 @@ python -m pytest tests/test_real_functionality.py -v
 
 # Integration tests
 python -m pytest tests/test_integration.py -v
+
+# Weather service tests
+python -m pytest tests/test_weather_service.py -v
+
+# Message bus tests
+python -m pytest tests/test_message_bus.py -v
+
+# Web app tests
+python -m pytest tests/test_web_app.py -v
 ```
 
 **Generate coverage report:**
@@ -293,8 +333,8 @@ python -m pytest tests/ --cov=src --cov-report=html
 ```
 
 **Test Results:**
-- 30 test cases (all passing)
-- 60% code coverage
+- 50 test cases (all passing)
+- 62% code coverage
 - Test types: Unit tests, integration tests, and end-to-end workflows
 - All tests use real files (no mocks)
 
@@ -306,25 +346,33 @@ python -m pytest tests/ --cov=src --cov-report=html
 - Error recovery (5 tests)
 - Full workflow integration (7 tests)
 - Meeting prep agent (6 tests)
+- Weather service (5 tests)
+- Message bus (5 tests)
+- Base agent (4 tests)
+- Web app (5 tests)
 
 ## Project Structure
 
 ```
 ProFlow-Agent/
 ├── src/
-│   ├── agents/              # Five specialized agents
+│   ├── agents/              # Five specialized agents + base agent
 │   ├── tools/               # Custom tools for each domain
 │   ├── workflows/           # Orchestration logic (sequential & async)
 │   ├── data/                # Data readers (CSV, JSON)
 │   ├── state/               # Session management and persistence
+│   ├── services/            # External services (Weather API)
+│   ├── messaging/           # Agent-to-agent message bus
 │   └── utils/               # Logging, error handling, retry logic
-├── tests/                   # Test suites (30 tests)
+├── tests/                   # Test suites (50 tests)
+├── templates/               # Web UI templates (HTML)
 ├── data/                    # Sample data files (CSV, JSON)
 ├── logs/                    # Timestamped log files
 ├── config/                  # Configuration files
 ├── docs/                    # Documentation
 ├── main.py                  # CLI interface
 ├── demo.py                  # Comprehensive demo script
+├── web_app.py              # Flask web dashboard
 ├── requirements.txt
 └── README.md
 ```
@@ -339,7 +387,10 @@ ProFlow-Agent/
 - Full logging system with timestamped log files
 - Stateful email processing with caching
 - Retry logic with exponential backoff
-- 30+ working tests with 60% code coverage
+- Real external API integration (OpenWeatherMap)
+- Agent-to-agent messaging system
+- Web dashboard (Flask-based UI)
+- 50+ working tests with 62% code coverage
 - CLI interface for easy usage
 - Comprehensive demo script
 

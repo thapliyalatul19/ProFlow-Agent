@@ -13,6 +13,7 @@ from typing import Dict, List, Optional
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tools import meeting_prep_tools
+from services.weather_service import WeatherService
 
 
 def create_meeting_prep_agent():
@@ -26,18 +27,29 @@ def create_meeting_prep_agent():
         meeting_prep_tools.generate_meeting_briefing
     ]
     
+    # Initialize weather service
+    weather_service = WeatherService()
+    
     instruction = """You prep executives for meetings. Make it fast and useful.
 
 What to do:
 1. Search past meetings for context
 2. Research participants (roles, styles)
 3. Generate briefing with key points
+4. Include weather context for meeting planning
+
+Include weather context for meeting planning:
+- Suggest indoor/outdoor venues based on weather
+- Recommend virtual option if weather is severe
+- Consider commute impact in bad weather
+- Factor in temperature for comfort
 
 Briefing format:
 - Summary (2-3 lines max)
 - Objective (what are we deciding)
 - Participants (who matters, what they want)
 - History (past decisions, open items)
+- Weather context (if relevant for venue/commute)
 - Talking points (3-5 specific things)
 - Prep tasks (what to do before)
 - Quality score (how good is this briefing)
